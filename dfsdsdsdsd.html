@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<title>Fiszki – Lektion 1–3</title>
+
+<style>
+/* --- TWÓJ CSS BEZ ZMIAN --- */
+:root {
+  --card-w: 100%;
+  --max-w: 600px;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  background: #f4f6fb;
+  margin: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  margin: 0 0 16px;
+  text-align: center;
+  font-size: 22px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+button, select {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #d0d6ea;
+  background: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+button.primary {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+}
+
+#card, #quiz, #list {
+  width: var(--card-w);
+  max-width: var(--max-w);
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+
+#card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  font-size: 20px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+#controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+#quiz input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e6e9f2;
+  margin-top: 8px;
+  font-size: 16px !important;
+  box-sizing: border-box;
+}
+
+#list ul {
+  padding-left: 18px;
+  margin: 0;
+}
+
+.small {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 20px; }
+  button, select { padding: 10px 12px; font-size: 15px; }
+  #card { font-size: 18px; min-height: 140px; padding: 16px; }
+  #controls { gap: 8px; }
+  #quiz input { font-size: 16px !important; }
+}
+</style>
+</head>
+
+<body>
+<h1>Fiszki – Lektion 1–3</h1>
+
+<div class="toolbar">
+  <button onclick="setMode('flashcards')" class="primary">Fiszki</button>
+  <button onclick="setMode('quiz')">Quiz (pisz)</button>
+  <button onclick="setMode('list')">Lista słówek</button>
+  <label class="small">Wybierz lekcje:</label>
+  <select id="lessonFilter" onchange="applyFilter()">
+    <option value="all">Wszystkie</option>
+    <option value="1">Lektion 1</option>
+    <option value="2">Lektion 2</option>
+    <option value="3">Lektion 3</option>
+  </select>
+  <button onclick="toggleShowAnswer()">Pokaż/ukryj tłumaczenie</button>
+</div>
+
+<div id="card">Kliknij tutaj, aby zobaczyć słówko</div>
+
+<div id="controls">
+  <button onclick="prevCard()">◀ Poprzednia</button>
+  <button onclick="nextCard()">Losuj następną</button>
+</div>
+
+<div id="quiz" style="display:none">
+  <div id="quizQuestion" style="font-weight:600;margin-bottom:6px">Pytanie</div>
+  <input id="quizInput" placeholder="Wpisz odpowiedź tutaj..." />
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <button onclick="checkAnswer()" class="primary">Sprawdź</button>
+    <button onclick="newQuiz()">Pomiń</button>
+  </div>
+  <div id="quizFeedback" style="margin-top:10px;font-weight:600"></div>
+</div>
+
+<div id="list" style="display:none"></div>
+
+<script>
+// --- dane słówek ---
+const fiszki = [
+  {de:"alkoholabhängig / alkoholsüchtig", pl:"uzależniony od alkoholu", lesson:1},
+  {de:"arbeitslos", pl:"bezrobotny", lesson:1},
+  {de:"die Arbeitslosigkeit", pl:"bezrobocie", lesson:1},
+  {de:"arm", pl:"biedny", lesson:1},
+  {de:"die Armut", pl:"bieda", lesson:1},
+  {de:"behindert", pl:"niepełnosprawny", lesson:1},
+  {de:"die Behinderung", pl:"niepełnosprawność", lesson:1},
+  {de:"die Diskriminierung", pl:"dyskryminacja", lesson:1},
+  {de:"drogensüchtig", pl:"uzależniony od narkotyków", lesson:1},
+  {de:"das Engagement", pl:"zaangażowanie", lesson:1},
+  {de:"die Gewalt", pl:"przemoc", lesson:1},
+  {de:"die Hilfe", pl:"pomoc", lesson:1},
+  {de:"die Kriminalität", pl:"przestępczość", lesson:1},
+  {de:"obdachlos", pl:"bezdomny", lesson:1},
+  {de:"die Obdachlosigkeit", pl:"bezdomność", lesson:1},
+  {de:"sich engagieren für", pl:"angażować się w / na rzecz", lesson:1},
+  {de:"sich engagieren gegen", pl:"angażować się przeciw", lesson:1},
+  {de:"die Sucht", pl:"uzależnienie", lesson:1},
+
+  {de:"die Aktion", pl:"akcja", lesson:2},
+  {de:"ein Konzert organisieren", pl:"organizować koncert", lesson:2},
+  {de:"eine bekannte Person einladen", pl:"zapraszać znaną osobę", lesson:2},
+  {de:"Flugblätter verteilen", pl:"rozdawać ulotki", lesson:2},
+  {de:"Geld sammeln", pl:"zbierać pieniądze", lesson:2},
+  {de:"helfen bei", pl:"pomagać przy", lesson:2},
+  {de:"Plakate aufhängen", pl:"rozwieszać plakaty", lesson:2},
+  {de:"Radiowerbung machen", pl:"robić reklamę radiową", lesson:2},
+  {de:"sich engagieren für", pl:"angażować się dla", lesson:2},
+  {de:"Sponsoren finden", pl:"znaleźć sponsorów", lesson:2},
+  {de:"unterstützen", pl:"wspierać", lesson:2},
+  {de:"vorbereiten", pl:"przygotowywać", lesson:2},
+
+  {de:"die Abgase", pl:"spaliny", lesson:3},
+  {de:"Altpapier sammeln", pl:"zbierać makulaturę", lesson:3},
+  {de:"Bäume pflanzen", pl:"sadzić drzewa", lesson:3},
+  {de:"den Müll sortieren", pl:"sortować śmieci", lesson:3},
+  {de:"die Umwelt schützen", pl:"chronić środowisko", lesson:3},
+  {de:"die Umwelt zerstören", pl:"niszczyć środowisko", lesson:3},
+  {de:"das Gift", pl:"trucizna", lesson:3},
+  {de:"die Luftverschmutzung", pl:"zanieczyszczenie powietrza", lesson:3},
+  {de:"Mehrwegflaschen benutzen", pl:"używać butelek zwrotnych", lesson:3},
+  {de:"Müll produzieren", pl:"produkować śmieci", lesson:3},
+  {de:"die Naturkatastrophe", pl:"klęska żywiołowa", lesson:3},
+  {de:"recyceln", pl:"recyklingować / przetwarzać", lesson:3},
+  {de:"sich einsetzen für", pl:"angażować się w", lesson:3},
+  {de:"Strom sparen", pl:"oszczędzać prąd", lesson:3},
+  {de:"der Umweltschutz", pl:"ochrona środowiska", lesson:3},
+  {de:"die Unterstützung", pl:"wsparcie", lesson:3},
+  {de:"Wasser sparen", pl:"oszczędzać wodę", lesson:3},
+  {de:"Wasser verschmutzen", pl:"zanieczyszczać wodę", lesson:3},
+  {de:"die Wasserverschmutzung", pl:"zanieczyszczenie wody", lesson:3}
+];
+
+let filtered = [...fiszki], history = [], currentIndex = 0, showAnswer = false, mode = 'flashcards', quizMode = 'DE2PL';
+
+const cardEl = document.getElementById('card');
+const listEl = document.getElementById('list');
+const quizEl = document.getElementById('quiz');
+const quizQuestionEl = document.getElementById('quizQuestion');
+const quizInputEl = document.getElementById('quizInput');
+const quizFeedbackEl = document.getElementById('quizFeedback');
+
+function applyFilter() {
+  const val = document.getElementById('lessonFilter').value;
+  filtered = val === 'all' ? [...fiszki] : fiszki.filter(f => String(f.lesson) === String(val));
+  history = [];
+  if (filtered.length === 0) {
+    cardEl.textContent = 'Brak słówek dla wybranej lekcji.';
+    listEl.innerHTML = '<p>Brak słówek.</p>';
+    return;
+  }
+  currentIndex = Math.floor(Math.random() * filtered.length);
+  renderCurrentCard();
+  if (mode === 'list') renderList();
+  if (mode === 'quiz') newQuiz();
+}
+
+function setMode(m) {
+  mode = m;
+  cardEl.style.display = 'none';
+  quizEl.style.display = 'none';
+  listEl.style.display = 'none';
+  if (m === 'flashcards') {
+    cardEl.style.display = 'flex';
+    document.getElementById('controls').style.display = 'flex';
+    renderCurrentCard();
+  } else if (m === 'quiz') {
+    quizEl.style.display = 'block';
+    document.getElementById('controls').style.display = 'none';
+    newQuiz();
+  } else if (m === 'list') {
+    listEl.style.display = 'block';
+    document.getElementById('controls').style.display = 'none';
+    renderList();
+  }
+}
+
+function renderCurrentCard() {
+  if (filtered.length === 0) {
+    cardEl.textContent = 'Brak słówek.';
+    return;
+  }
+  const item = filtered[currentIndex];
+  cardEl.innerHTML = `
+    <div style="text-align:center;">
+      <div style="font-weight:600;margin-bottom:6px;">${item.de}</div>
+      <div class="small">${showAnswer ? item.pl : 'Kliknij kartę aby zobaczyć tłumaczenie'}</div>
+    </div>
+  `;
+}
+
+cardEl.addEventListener('click', () => {
+  showAnswer = !showAnswer;
+  renderCurrentCard();
+});
+
+function toggleShowAnswer() {
+  showAnswer = !showAnswer;
+  renderCurrentCard();
+}
+
+function prevCard() {
+  if (history.length <= 1) {
+    currentIndex = Math.floor(Math.random() * filtered.length);
+  } else {
+    history.pop();
+    currentIndex = history.pop() ?? Math.floor(Math.random() * filtered.length);
+  }
+  showAnswer = false;
+  renderCurrentCard();
+}
+
+function nextCard() {
+  if (filtered.length === 0) return;
+  history.push(currentIndex);
+  currentIndex = Math.floor(Math.random() * filtered.length);
+  showAnswer = false;
+  renderCurrentCard();
+}
+
+function newQuiz() {
+  if (filtered.length === 0) {
+    quizQuestionEl.textContent = 'Brak słówek do quizu.';
+    return;
+  }
+  currentIndex = Math.floor(Math.random() * filtered.length);
+  quizMode = Math.random() < 0.5 ? 'DE2PL' : 'PL2DE';
+  quizQuestionEl.textContent =
+    quizMode === 'DE2PL'
+      ? `Przetłumacz na polski: ${filtered[currentIndex].de}`
+      : `Przetłumacz na niemiecki: ${filtered[currentIndex].pl}`;
+
+  quizInputEl.value = '';
+  quizFeedbackEl.textContent = '';
+}
+
+function normalize(s) {
+  return s.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function checkAnswer() {
+  const user = normalize(quizInputEl.value);
+  const correct =
+    quizMode === 'DE2PL'
+      ? normalize(filtered[currentIndex].pl)
+      : normalize(filtered[currentIndex].de);
+
+  if (user === correct) {
+    quizFeedbackEl.textContent = '✔️ Dobrze!';
+  } else {
+    quizFeedbackEl.textContent = `❌ Źle. Poprawna odpowiedź: ${
+      quizMode === 'DE2PL'
+        ? filtered[currentIndex].pl
+        : filtered[currentIndex].de
+    }`;
+  }
+
+  setTimeout(newQuiz, 1200);
+}
+
+function renderList() {
+  if (filtered.length === 0) {
+    listEl.innerHTML = '<p>Brak słówek.</p>';
+    return;
+  }
+  let html = '<h2>Lista słówek</h2><ul>';
+  filtered.forEach(f => {
+    html += `<li><b>${f.de}</b> – ${f.pl} <span class="small">(Lektion ${f.lesson})</span></li>`;
+  });
+  html += '</ul>';
+  listEl.innerHTML = html;
+}
+
+applyFilter();
+setMode('flashcards');
+</script>
+
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+
+</body>
+</html>
